@@ -1,0 +1,248 @@
+<html class="dark"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#f59f0a",
+            "background-light": "#f8f7f5",
+            "background-dark": "#0a0a0f", // Adjusted to user preference while staying dark
+          },
+          fontFamily: {
+            "display": ["Inter", "sans-serif"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<nav class="border-b border-primary/10 bg-background-light dark:bg-background-dark sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between h-16 items-center">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-icons text-background-dark text-xl">auto_awesome</span>
+</div>
+<span class="text-xl font-bold tracking-tight">Content<span class="text-primary">AI</span></span>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons">notifications</span>
+</button>
+<div class="flex items-center gap-3 pl-4 border-l border-primary/20">
+<div class="text-right hidden sm:block">
+<p class="text-sm font-medium">Alex Rivera</p>
+<p class="text-xs text-slate-500">Pro Account</p>
+</div>
+<img alt="User Profile" class="w-10 h-10 rounded-full border-2 border-primary/30" data-alt="Professional user profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsGFos8dvTbKoWUERK3fpKdYnafFL4iajD05MJT6e3Q821Ml98plKrbEk0OD1isBh0IkDZ-sG3YM58UNvGBNbquiwYwjUlWRck8Or1HCRILckkfwPnbowMkX8IH1ps-73J-35U6m-tHmbCPIixGi_azgsGTO2cLy40zuGNYYB-wOZT2YppGZnI2TAceEZlpcFqSdcbiDZQ0YKeS_poUIzIjKWnPyxZPPcC4ljzOn5GOD3ekXT9MHbd8ZYt4prcB1-vgRh83nxzCkY"/>
+</div>
+</div>
+</div>
+</div>
+</nav>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex gap-8">
+<aside class="w-64 flex-shrink-0 hidden md:flex flex-col gap-8">
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 text-primary font-medium border-r-4 border-primary transition-all" href="#">
+<span class="material-icons">folder</span>
+          My Content
+        </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-primary/5 hover:text-primary transition-all" href="#">
+<span class="material-icons">groups</span>
+          Shared
+        </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-primary/5 hover:text-primary transition-all" href="#">
+<span class="material-icons">description</span>
+          Drafts
+        </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-primary/5 hover:text-primary transition-all" href="#">
+<span class="material-icons">star</span>
+          Favorites
+        </a>
+</div>
+<div class="p-6 rounded-xl bg-primary/5 border border-primary/10 relative overflow-hidden">
+<div class="relative z-10">
+<h3 class="text-sm font-semibold uppercase tracking-wider text-primary mb-4">Usage Stats</h3>
+<div class="flex items-center justify-between">
+<div>
+<p class="text-2xl font-bold">47</p>
+<p class="text-xs text-slate-500">pieces generated</p>
+</div>
+<div class="relative w-12 h-12">
+<svg class="w-full h-full transform -rotate-90">
+<circle class="text-primary/10" cx="24" cy="24" fill="transparent" r="20" stroke="currentColor" stroke-width="4"></circle>
+<circle class="text-primary" cx="24" cy="24" fill="transparent" r="20" stroke="currentColor" stroke-dasharray="125.6" stroke-dashoffset="66" stroke-width="4"></circle>
+</svg>
+</div>
+</div>
+<p class="mt-4 text-[10px] text-slate-400">Monthly limit: 100 pieces</p>
+</div>
+<div class="absolute -bottom-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl"></div>
+</div>
+</aside>
+<main class="flex-1">
+<div class="flex flex-col gap-6">
+<div class="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+<div class="relative w-full lg:max-w-md">
+<span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="w-full pl-12 pr-4 py-3 bg-white dark:bg-white/5 border border-primary/10 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all" placeholder="Search your library..." type="text"/>
+</div>
+<button class="bg-primary text-background-dark px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/10">
+<span class="material-icons">add</span>
+            Create New
+          </button>
+</div>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 rounded-full bg-primary text-background-dark text-sm font-medium">All</button>
+<button class="px-4 py-2 rounded-full bg-white dark:bg-white/5 border border-primary/10 text-sm font-medium hover:border-primary/50 transition-colors">Blog Posts</button>
+<button class="px-4 py-2 rounded-full bg-white dark:bg-white/5 border border-primary/10 text-sm font-medium hover:border-primary/50 transition-colors">Social Media</button>
+<button class="px-4 py-2 rounded-full bg-white dark:bg-white/5 border border-primary/10 text-sm font-medium hover:border-primary/50 transition-colors">Scripts</button>
+<button class="px-4 py-2 rounded-full bg-white dark:bg-white/5 border border-primary/10 text-sm font-medium hover:border-primary/50 transition-colors">Newsletters</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+<div class="group relative bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-xl hover:border-primary/30 transition-all flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary">Blog Post</span>
+<span class="text-xs text-slate-500">2h ago</span>
+</div>
+<h3 class="text-lg font-bold mb-2 group-hover:text-primary transition-colors">The Future of AI in Marketing</h3>
+<p class="text-sm text-slate-400 line-clamp-2 mb-4">Explore how generative models are reshaping the landscape of digital advertising and customer engagement in 2024.</p>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-white/5">
+<div class="flex items-center gap-3 text-xs text-slate-500">
+<span class="flex items-center gap-1"><span class="material-icons text-sm">sticky_note_2</span> 1,204 words</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">edit</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">content_copy</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">share</span></button>
+<button class="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors"><span class="material-icons text-lg">delete</span></button>
+</div>
+</div>
+</div>
+<div class="group relative bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-xl hover:border-primary/30 transition-all flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400">Social Media</span>
+<span class="text-xs text-slate-500">Oct 24</span>
+</div>
+<h3 class="text-lg font-bold mb-2 group-hover:text-primary transition-colors">10 Tips for Better Productivity</h3>
+<p class="text-sm text-slate-400 line-clamp-2 mb-4">A thread series designed for Twitter and LinkedIn focusing on high-impact daily habits for remote developers.</p>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-white/5">
+<div class="flex items-center gap-3 text-xs text-slate-500">
+<span class="flex items-center gap-1"><span class="material-icons text-sm">sticky_note_2</span> 450 words</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">edit</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">content_copy</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">share</span></button>
+<button class="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors"><span class="material-icons text-lg">delete</span></button>
+</div>
+</div>
+</div>
+<div class="group relative bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-xl hover:border-primary/30 transition-all flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-400">Scripts</span>
+<span class="text-xs text-slate-500">Oct 22</span>
+</div>
+<h3 class="text-lg font-bold mb-2 group-hover:text-primary transition-colors">Podcast: The Web3 Myth</h3>
+<p class="text-sm text-slate-400 line-clamp-2 mb-4">Intro and outro scripts for a 30-minute podcast episode discussing the realities of blockchain technology.</p>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-white/5">
+<div class="flex items-center gap-3 text-xs text-slate-500">
+<span class="flex items-center gap-1"><span class="material-icons text-sm">sticky_note_2</span> 890 words</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">edit</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">content_copy</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">share</span></button>
+<button class="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors"><span class="material-icons text-lg">delete</span></button>
+</div>
+</div>
+</div>
+<div class="group relative bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-xl hover:border-primary/30 transition-all flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-green-500/20 text-green-400">Newsletter</span>
+<span class="text-xs text-slate-500">Oct 20</span>
+</div>
+<h3 class="text-lg font-bold mb-2 group-hover:text-primary transition-colors">Weekly Tech Roundup #42</h3>
+<p class="text-sm text-slate-400 line-clamp-2 mb-4">A curated summary of the most important tech news from the past week, formatted for email subscribers.</p>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-white/5">
+<div class="flex items-center gap-3 text-xs text-slate-500">
+<span class="flex items-center gap-1"><span class="material-icons text-sm">sticky_note_2</span> 1,560 words</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">edit</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">content_copy</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">share</span></button>
+<button class="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors"><span class="material-icons text-lg">delete</span></button>
+</div>
+</div>
+</div>
+<div class="group relative bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-xl hover:border-primary/30 transition-all flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary">Blog Post</span>
+<span class="text-xs text-slate-500">Oct 18</span>
+</div>
+<h3 class="text-lg font-bold mb-2 group-hover:text-primary transition-colors">Sustainable Living 101</h3>
+<p class="text-sm text-slate-400 line-clamp-2 mb-4">Beginner-friendly guide on reducing carbon footprint through small, manageable daily changes.</p>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-white/5">
+<div class="flex items-center gap-3 text-xs text-slate-500">
+<span class="flex items-center gap-1"><span class="material-icons text-sm">sticky_note_2</span> 2,100 words</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">edit</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">content_copy</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">share</span></button>
+<button class="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors"><span class="material-icons text-lg">delete</span></button>
+</div>
+</div>
+</div>
+<div class="group relative bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-xl hover:border-primary/30 transition-all flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400">Social Media</span>
+<span class="text-xs text-slate-500">Oct 15</span>
+</div>
+<h3 class="text-lg font-bold mb-2 group-hover:text-primary transition-colors">New Product Launch Teaser</h3>
+<p class="text-sm text-slate-400 line-clamp-2 mb-4">Copywriting for Instagram posts and stories to build anticipation for the upcoming v2 release.</p>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-white/5">
+<div class="flex items-center gap-3 text-xs text-slate-500">
+<span class="flex items-center gap-1"><span class="material-icons text-sm">sticky_note_2</span> 210 words</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">edit</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">content_copy</span></button>
+<button class="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><span class="material-icons text-lg">share</span></button>
+<button class="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors"><span class="material-icons text-lg">delete</span></button>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-center mt-8">
+<button class="px-8 py-3 rounded-xl border border-primary/20 text-slate-400 hover:text-primary hover:border-primary transition-all flex items-center gap-2">
+            Load More Content
+            <span class="material-icons text-sm">expand_more</span>
+</button>
+</div>
+</div>
+</main>
+</div>
+</body></html>
