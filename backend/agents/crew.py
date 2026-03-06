@@ -12,14 +12,20 @@ import os
 import json
 import time
 import threading
+import traceback
 from typing import Optional
 from collections import deque
+
+GEMINI_AVAILABLE = False
+_genai = None
 
 try:
     import google.generativeai as genai
     GEMINI_AVAILABLE = True
+    _genai = genai
+    print("✅ google.generativeai imported successfully")
 except ImportError:
-    GEMINI_AVAILABLE = False
+    print("❌ google.generativeai not available")
 
 
 # ============ STRICT RATE LIMITER (per-key, 10 requests/minute each) ============
@@ -67,6 +73,10 @@ class KeyRateLimiter:
 _limiter_1 = KeyRateLimiter("Key1-Research+Write")
 _limiter_2 = KeyRateLimiter("Key2-Edit+SEO")
 
+# Model cache per key
+_model_cache: dict[str, object] = {}
+_model_lock = threading.Lock()
+
 
 def rate_limited_generate(model, prompt: str, limiter: KeyRateLimiter, max_retries: int = 2) -> str:
     """Call Gemini with per-key rate limiting + retry. Circuit breaker on repeated failures."""
@@ -82,6 +92,7 @@ def rate_limited_generate(model, prompt: str, limiter: KeyRateLimiter, max_retri
             return response.text
         except Exception as e:
             error_str = str(e).lower()
+            print(f"❗ [{limiter.name}] Gemini error: {e}")
             if "429" in error_str or "quota" in error_str or "rate" in error_str:
                 limiter.failures += 1
                 backoff = (attempt + 1) * 5
@@ -98,7 +109,8 @@ def get_model(slot: int = 1):
     Slot 1: Researcher + Writer (uses GOOGLE_API_KEY)
     Slot 2: Editor + SEO (uses GOOGLE_API_KEY_2, falls back to GOOGLE_API_KEY)
     """
-    if not GEMINI_AVAILABLE:
+    if not GEMINI_AVAILABLE or _genai is None:
+        print(f"⚠️ get_model(slot={slot}): GEMINI_AVAILABLE={GEMINI_AVAILABLE}")
         return None
 
     if slot == 2:
@@ -107,10 +119,18 @@ def get_model(slot: int = 1):
         api_key = os.getenv("GOOGLE_API_KEY", "")
 
     if not api_key:
+        print(f"⚠️ get_model(slot={slot}): No API key found!")
         return None
 
-    genai.configure(api_key=api_key)
-    return genai.GenerativeModel(os.getenv("DEFAULT_MODEL", "gemini-2.0-flash"))
+    # Cache models per key to avoid re-configuring
+    with _model_lock:
+        cache_key = f"{api_key[:8]}_{slot}"
+        if cache_key not in _model_cache:
+            _genai.configure(api_key=api_key)
+            model_name = os.getenv("DEFAULT_MODEL", "gemini-2.0-flash")
+            _model_cache[cache_key] = _genai.GenerativeModel(model_name)
+            print(f"✅ Created Gemini model for slot {slot} (key: {api_key[:8]}..., model: {model_name})")
+        return _model_cache[cache_key]
 
 
 def research_agent(topic: str, content_type: str, keywords: list[str]) -> dict:
