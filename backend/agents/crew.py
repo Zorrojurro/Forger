@@ -22,91 +22,100 @@ except ImportError:
     GEMINI_AVAILABLE = False
 
 
-# ============ STRICT RATE LIMITER (11 requests/minute) ============
+# ============ STRICT RATE LIMITER (per-key, 10 requests/minute each) ============
 
-MAX_REQUESTS_PER_MINUTE = 10  # keep 1 under the 11 limit for safety
-MIN_SPACING_SECONDS = 6       # ensure ~10 calls/min max spacing
-_request_timestamps: deque = deque()
-_rate_lock = threading.Lock()
-_last_call_time = 0.0
+MAX_REQUESTS_PER_MINUTE = 10
+MIN_SPACING_SECONDS = 6
 
+class KeyRateLimiter:
+    """Independent rate limiter per API key."""
+    def __init__(self, name: str):
+        self.name = name
+        self.timestamps: deque = deque()
+        self.lock = threading.Lock()
+        self.last_call = 0.0
+        self.failures = 0
 
-def _wait_for_rate_limit():
-    """Block until we're allowed to make another API call. Strict sliding window + spacing."""
-    global _last_call_time
-    with _rate_lock:
-        now = time.time()
-
-        # Enforce minimum spacing between calls (6s = max 10/min)
-        since_last = now - _last_call_time
-        if since_last < MIN_SPACING_SECONDS:
-            wait = MIN_SPACING_SECONDS - since_last
-            print(f"⏳ Spacing: waiting {wait:.1f}s between API calls")
-            time.sleep(wait)
+    def wait(self):
+        with self.lock:
             now = time.time()
-
-        # Remove timestamps older than 60 seconds
-        while _request_timestamps and _request_timestamps[0] < now - 60:
-            _request_timestamps.popleft()
-        
-        if len(_request_timestamps) >= MAX_REQUESTS_PER_MINUTE:
-            wait_time = 60 - (now - _request_timestamps[0]) + 1.0
-            if wait_time > 0:
-                print(f"⏳ Rate limit: waiting {wait_time:.1f}s ({len(_request_timestamps)}/{MAX_REQUESTS_PER_MINUTE} used)")
-                time.sleep(wait_time)
+            since_last = now - self.last_call
+            if since_last < MIN_SPACING_SECONDS:
+                wait = MIN_SPACING_SECONDS - since_last
+                print(f"⏳ [{self.name}] spacing {wait:.1f}s")
+                time.sleep(wait)
                 now = time.time()
-                while _request_timestamps and _request_timestamps[0] < now - 60:
-                    _request_timestamps.popleft()
-        
-        _request_timestamps.append(time.time())
-        _last_call_time = time.time()
-        print(f"🔑 Gemini API call #{len(_request_timestamps)}/{MAX_REQUESTS_PER_MINUTE} (last 60s)")
+
+            while self.timestamps and self.timestamps[0] < now - 60:
+                self.timestamps.popleft()
+
+            if len(self.timestamps) >= MAX_REQUESTS_PER_MINUTE:
+                wait_time = 60 - (now - self.timestamps[0]) + 1.0
+                if wait_time > 0:
+                    print(f"⏳ [{self.name}] rate limit {wait_time:.1f}s")
+                    time.sleep(wait_time)
+                    now = time.time()
+                    while self.timestamps and self.timestamps[0] < now - 60:
+                        self.timestamps.popleft()
+
+            self.timestamps.append(time.time())
+            self.last_call = time.time()
+            print(f"🔑 [{self.name}] call #{len(self.timestamps)}/{MAX_REQUESTS_PER_MINUTE}")
 
 
-def rate_limited_generate(model, prompt: str, max_retries: int = 2) -> str:
-    """Call Gemini with rate limiting + fast retry on 429. Circuit breaker on repeated failures."""
-    global _consecutive_failures
-    
-    # Circuit breaker: if Gemini keeps failing, skip it entirely
-    if _consecutive_failures >= 3:
-        print("🔴 Circuit breaker OPEN — Gemini quota exhausted, using mock data")
-        raise Exception("Circuit breaker: Gemini disabled due to repeated quota errors")
-    
+# Two independent rate limiters
+_limiter_1 = KeyRateLimiter("Key1-Research+Write")
+_limiter_2 = KeyRateLimiter("Key2-Edit+SEO")
+
+
+def rate_limited_generate(model, prompt: str, limiter: KeyRateLimiter, max_retries: int = 2) -> str:
+    """Call Gemini with per-key rate limiting + retry. Circuit breaker on repeated failures."""
+    if limiter.failures >= 3:
+        print(f"🔴 [{limiter.name}] circuit breaker OPEN — using mock data")
+        raise Exception(f"Circuit breaker: {limiter.name} disabled")
+
     for attempt in range(max_retries):
-        _wait_for_rate_limit()
+        limiter.wait()
         try:
             response = model.generate_content(prompt)
-            _consecutive_failures = 0  # Reset on success
+            limiter.failures = 0
             return response.text
         except Exception as e:
             error_str = str(e).lower()
             if "429" in error_str or "quota" in error_str or "rate" in error_str:
-                _consecutive_failures += 1
-                backoff = (attempt + 1) * 5  # 5s, 10s (fast)
-                print(f"⚠️ Quota hit (attempt {attempt+1}/{max_retries}), backoff {backoff}s... (failures: {_consecutive_failures})")
+                limiter.failures += 1
+                backoff = (attempt + 1) * 5
+                print(f"⚠️ [{limiter.name}] quota hit (attempt {attempt+1}/{max_retries}), backoff {backoff}s")
                 time.sleep(backoff)
             else:
                 raise
-    _consecutive_failures += 1
-    raise Exception("Gemini API rate limit exceeded after retries")
+    limiter.failures += 1
+    raise Exception(f"{limiter.name}: rate limit exceeded after retries")
 
 
-# Track consecutive failures for circuit breaker
-_consecutive_failures = 0
-
-
-def get_model():
-    """Get Gemini model or return None if not available."""
-    api_key = os.getenv("GOOGLE_API_KEY", "")
-    if not api_key or not GEMINI_AVAILABLE:
+def get_model(slot: int = 1):
+    """Get Gemini model for the given slot (1 or 2).
+    Slot 1: Researcher + Writer (uses GOOGLE_API_KEY)
+    Slot 2: Editor + SEO (uses GOOGLE_API_KEY_2, falls back to GOOGLE_API_KEY)
+    """
+    if not GEMINI_AVAILABLE:
         return None
+
+    if slot == 2:
+        api_key = os.getenv("GOOGLE_API_KEY_2", "") or os.getenv("GOOGLE_API_KEY", "")
+    else:
+        api_key = os.getenv("GOOGLE_API_KEY", "")
+
+    if not api_key:
+        return None
+
     genai.configure(api_key=api_key)
     return genai.GenerativeModel(os.getenv("DEFAULT_MODEL", "gemini-2.0-flash"))
 
 
 def research_agent(topic: str, content_type: str, keywords: list[str]) -> dict:
     """Agent 1: Researcher — Gathers data and insights on the topic."""
-    model = get_model()
+    model = get_model(slot=1)  # Researcher uses Key 1
     
     if model:
         prompt = f"""You are a senior content researcher. Your job is to research the following topic 
@@ -129,7 +138,7 @@ Provide your research in the following JSON format:
 Return ONLY the JSON, no markdown formatting."""
         
         try:
-            text = rate_limited_generate(model, prompt).strip()
+            text = rate_limited_generate(model, prompt, _limiter_1).strip()
             if text.startswith("```"):
                 text = text.split("\n", 1)[1].rsplit("```", 1)[0]
             return json.loads(text)
@@ -172,7 +181,7 @@ Return ONLY the JSON, no markdown formatting."""
 def writer_agent(topic: str, content_type: str, tone: str, audience: str, 
                  research: dict, instructions: str = "") -> str:
     """Agent 2: Writer — Crafts compelling content based on research."""
-    model = get_model()
+    model = get_model(slot=1)  # Writer uses Key 1
     
     if model:
         prompt = f"""You are an expert content writer. Using the research provided below, 
@@ -202,7 +211,7 @@ IMPORTANT GUIDELINES:
 Write the complete content now:"""
         
         try:
-            return rate_limited_generate(model, prompt).strip()
+            return rate_limited_generate(model, prompt, _limiter_1).strip()
         except Exception as e:
             print(f"Writer agent error: {e}")
     
@@ -222,7 +231,7 @@ Write the complete content now:"""
 
 def editor_agent(content: str, tone: str, audience: str) -> str:
     """Agent 3: Editor — Reviews and refines content."""
-    model = get_model()
+    model = get_model(slot=2)  # Editor uses Key 2
     
     if model:
         prompt = f"""You are a senior content editor. Review and improve the following content.
@@ -242,7 +251,7 @@ Requirements:
 Return the EDITED content only, no explanations:"""
         
         try:
-            return rate_limited_generate(model, prompt).strip()
+            return rate_limited_generate(model, prompt, _limiter_2).strip()
         except Exception as e:
             print(f"Editor agent error: {e}")
     
@@ -252,7 +261,7 @@ Return the EDITED content only, no explanations:"""
 
 def seo_optimizer_agent(content: str, keywords: list[str], content_type: str) -> dict:
     """Agent 4: SEO Optimizer — Adds meta tags, keywords, and platform optimization."""
-    model = get_model()
+    model = get_model(slot=2)  # SEO uses Key 2
     
     if model:
         prompt = f"""You are an SEO and content optimization specialist. 
@@ -278,7 +287,7 @@ Return a JSON object with:
 Return ONLY valid JSON:"""
         
         try:
-            text = rate_limited_generate(model, prompt).strip()
+            text = rate_limited_generate(model, prompt, _limiter_2).strip()
             if text.startswith("```"):
                 text = text.split("\n", 1)[1].rsplit("```", 1)[0]
             result = json.loads(text)
