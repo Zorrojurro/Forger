@@ -17,15 +17,25 @@ from typing import Optional
 from collections import deque
 
 GEMINI_AVAILABLE = False
-_genai = None
+_use_new_api = False
 
+# Try new google.genai client first (recommended)
 try:
-    import google.generativeai as genai
+    from google import genai as genai_new
+    _use_new_api = True
     GEMINI_AVAILABLE = True
-    _genai = genai
-    print("✅ google.generativeai imported successfully")
+    print("✅ Using google.genai (new Client API)")
 except ImportError:
-    print("❌ google.generativeai not available")
+    pass
+
+# Fallback to legacy google.generativeai
+if not GEMINI_AVAILABLE:
+    try:
+        import google.generativeai as genai_legacy
+        GEMINI_AVAILABLE = True
+        print("✅ Using google.generativeai (legacy API)")
+    except ImportError:
+        print("❌ No Gemini library available")
 
 
 # ============ STRICT RATE LIMITER (per-key, 10 requests/minute each) ============
@@ -78,7 +88,7 @@ _model_cache: dict[str, object] = {}
 _model_lock = threading.Lock()
 
 
-def rate_limited_generate(model, prompt: str, limiter: KeyRateLimiter, max_retries: int = 2) -> str:
+def rate_limited_generate(model, prompt: str, limiter: KeyRateLimiter, api_key: str = "", max_retries: int = 2) -> str:
     """Call Gemini with per-key rate limiting + retry. Circuit breaker on repeated failures."""
     if limiter.failures >= 3:
         print(f"🔴 [{limiter.name}] circuit breaker OPEN — using mock data")
@@ -87,18 +97,31 @@ def rate_limited_generate(model, prompt: str, limiter: KeyRateLimiter, max_retri
     for attempt in range(max_retries):
         limiter.wait()
         try:
-            response = model.generate_content(prompt)
-            limiter.failures = 0
-            return response.text
+            if _use_new_api:
+                # New google.genai Client API — use client directly
+                client = genai_new.Client(api_key=api_key)
+                model_name = os.getenv("DEFAULT_MODEL", "gemini-2.0-flash")
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt
+                )
+                limiter.failures = 0
+                return response.text
+            else:
+                # Legacy google.generativeai API
+                response = model.generate_content(prompt)
+                limiter.failures = 0
+                return response.text
         except Exception as e:
             error_str = str(e).lower()
-            print(f"❗ [{limiter.name}] Gemini error: {e}")
+            print(f"❗ [{limiter.name}] Gemini error (attempt {attempt+1}): {e}")
             if "429" in error_str or "quota" in error_str or "rate" in error_str:
                 limiter.failures += 1
                 backoff = (attempt + 1) * 5
-                print(f"⚠️ [{limiter.name}] quota hit (attempt {attempt+1}/{max_retries}), backoff {backoff}s")
+                print(f"⚠️ [{limiter.name}] quota hit, backoff {backoff}s")
                 time.sleep(backoff)
             else:
+                limiter.failures += 1
                 raise
     limiter.failures += 1
     raise Exception(f"{limiter.name}: rate limit exceeded after retries")
@@ -108,9 +131,10 @@ def get_model(slot: int = 1):
     """Get Gemini model for the given slot (1 or 2).
     Slot 1: Researcher + Writer (uses GOOGLE_API_KEY)
     Slot 2: Editor + SEO (uses GOOGLE_API_KEY_2, falls back to GOOGLE_API_KEY)
+    Returns (model_or_marker, api_key) tuple.
     """
-    if not GEMINI_AVAILABLE or _genai is None:
-        print(f"⚠️ get_model(slot={slot}): GEMINI_AVAILABLE={GEMINI_AVAILABLE}")
+    if not GEMINI_AVAILABLE:
+        print(f"⚠️ get_model(slot={slot}): GEMINI_AVAILABLE=False")
         return None
 
     if slot == 2:
@@ -122,15 +146,21 @@ def get_model(slot: int = 1):
         print(f"⚠️ get_model(slot={slot}): No API key found!")
         return None
 
-    # Cache models per key to avoid re-configuring
-    with _model_lock:
-        cache_key = f"{api_key[:8]}_{slot}"
-        if cache_key not in _model_cache:
-            _genai.configure(api_key=api_key)
-            model_name = os.getenv("DEFAULT_MODEL", "gemini-2.0-flash")
-            _model_cache[cache_key] = _genai.GenerativeModel(model_name)
-            print(f"✅ Created Gemini model for slot {slot} (key: {api_key[:8]}..., model: {model_name})")
-        return _model_cache[cache_key]
+    if _use_new_api:
+        # For new API, we create the client in rate_limited_generate
+        # Return a marker object that carries the api_key
+        print(f"✅ Slot {slot} ready (new API, key: {api_key[:8]}...)")
+        return {"_api_key": api_key, "_slot": slot}
+    else:
+        # Legacy API: configure and create model
+        with _model_lock:
+            cache_key = f"{api_key[:8]}_{slot}"
+            if cache_key not in _model_cache:
+                genai_legacy.configure(api_key=api_key)
+                model_name = os.getenv("DEFAULT_MODEL", "gemini-2.0-flash")
+                _model_cache[cache_key] = genai_legacy.GenerativeModel(model_name)
+                print(f"✅ Created legacy model for slot {slot} (key: {api_key[:8]}..., model: {model_name})")
+            return _model_cache[cache_key]
 
 
 def research_agent(topic: str, content_type: str, keywords: list[str]) -> dict:
@@ -158,7 +188,8 @@ Provide your research in the following JSON format:
 Return ONLY the JSON, no markdown formatting."""
         
         try:
-            text = rate_limited_generate(model, prompt, _limiter_1).strip()
+            api_key = model.get("_api_key", "") if isinstance(model, dict) else ""
+            text = rate_limited_generate(model, prompt, _limiter_1, api_key=api_key).strip()
             if text.startswith("```"):
                 text = text.split("\n", 1)[1].rsplit("```", 1)[0]
             return json.loads(text)
@@ -231,7 +262,8 @@ IMPORTANT GUIDELINES:
 Write the complete content now:"""
         
         try:
-            return rate_limited_generate(model, prompt, _limiter_1).strip()
+            api_key = model.get("_api_key", "") if isinstance(model, dict) else ""
+            return rate_limited_generate(model, prompt, _limiter_1, api_key=api_key).strip()
         except Exception as e:
             print(f"Writer agent error: {e}")
     
@@ -271,7 +303,8 @@ Requirements:
 Return the EDITED content only, no explanations:"""
         
         try:
-            return rate_limited_generate(model, prompt, _limiter_2).strip()
+            api_key = model.get("_api_key", "") if isinstance(model, dict) else ""
+            return rate_limited_generate(model, prompt, _limiter_2, api_key=api_key).strip()
         except Exception as e:
             print(f"Editor agent error: {e}")
     
@@ -307,7 +340,8 @@ Return a JSON object with:
 Return ONLY valid JSON:"""
         
         try:
-            text = rate_limited_generate(model, prompt, _limiter_2).strip()
+            api_key = model.get("_api_key", "") if isinstance(model, dict) else ""
+            text = rate_limited_generate(model, prompt, _limiter_2, api_key=api_key).strip()
             if text.startswith("```"):
                 text = text.split("\n", 1)[1].rsplit("```", 1)[0]
             result = json.loads(text)
