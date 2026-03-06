@@ -140,13 +140,15 @@ app.add_middleware(
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    has_api_key = bool(os.getenv("GOOGLE_API_KEY"))
+    has_key1 = bool(os.getenv("GOOGLE_API_KEY"))
+    has_key2 = bool(os.getenv("GOOGLE_API_KEY_2"))
     return {
         "status": "healthy",
         "service": "Forger API",
         "version": "1.0.0",
-        "ai_enabled": has_api_key,
-        "model": os.getenv("DEFAULT_MODEL", "gemini-2.0-flash") if has_api_key else "mock-mode",
+        "ai_enabled": has_key1,
+        "dual_keys": has_key1 and has_key2,
+        "model": os.getenv("DEFAULT_MODEL", "gemini-2.0-flash") if has_key1 else "mock-mode",
     }
 
 
